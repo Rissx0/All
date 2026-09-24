@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html manifest="700.manifest">
+<head>
+<title>RissX · PS4 GoldHEN Host</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-user-select:none; user-select:none; }
+html, body { height:100%; overflow:hidden; }
+body {
+    font-family:-apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    background:#050505;
+    color:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center;
+}
+.bg { position:fixed; inset:0; z-index:0; background:#050505; }
+.blob { display:none; }
+.card {
+    position:relative; z-index:1;
+    width:calc(100% - 48px); max-width:1245px;
+    padding:48px 9% 44px;
+    border-radius:16px;
+    background:rgba(0,0,0,.62);
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 12px 28px rgba(0,0,0,.42);
+    text-align:center;
+}
+.logo { font-size:58px; font-weight:800; letter-spacing:2px; line-height:1; color:#f4f4f4; }
+.logo span { font-weight:300; color:#77db69; }
+.subtitle { margin-top:14px; font-size:24px; letter-spacing:0; color:#7fd373; }
+#msgs { margin-top:36px; font-size:24px; font-weight:500; min-height:30px; }
+.progress-wrap { margin:26px auto 0; width:100%; position:relative; }
+.progress-track {
+    height:8px; overflow:hidden;
+    background:rgba(255,255,255,.10);
+    border:0;
+}
+.progress-fill {
+    height:100%; width:0; background:linear-gradient(90deg,#55c94a 0%,#9bf06d 48%,#53c848 100%);
+    box-shadow:0 0 9px rgba(112,212,96,.7);
+    transition:width .25s linear;
+}
+.progress-wrap:not(.determinate) .progress-fill {
+    width:35% !important;
+    animation:slide 1.8s ease-in-out infinite;
+}
+.progress-wrap.determinate .progress-fill::after {
+    content:""; display:block; height:100%; width:42%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);
+    animation:shine 1.35s linear infinite;
+}
+@keyframes slide {
+    0% { margin-left:0; }
+    50% { margin-left:65%; }
+    100% { margin-left:0; }
+}
+@keyframes shine {
+    0% { transform:translateX(-130%); }
+    100% { transform:translateX(300%); }
+}
+.progress-label { margin-top:12px; font-size:18px; font-weight:600; letter-spacing:1px; color:#aaa; min-height:18px; }
+.credits {
+    position:relative; z-index:1; margin-top:32px;
+    padding:10px 24px;
+    border-radius:999px;
+    font-size:16px; color:rgba(255,255,255,.72);
+    background:rgba(0,0,0,.48);
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 6px 18px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.credits a { color:#f0f0f0; text-decoration:none; margin:0 5px; }
+@media (max-width:800px) {
+    .card { width:calc(100% - 28px); padding:34px 7% 32px; }
+    .logo { font-size:44px; }
+    .subtitle { font-size:16px; }
+    #msgs { font-size:18px; }
+    .progress-label { font-size:14px; }
+    .credits { font-size:12px; }
+}
+</style>
+</head>
+<body>
+<script>
+history.replaceState(null,null,'index.html');var histlength=history.length;history.go(-histlength);
+function DLProgress(e){Percent=(Math.round(e.loaded / e.total * 100));window.msgs.innerHTML="Installing Offline Cache: " + Percent + "%";}
+function DisplayCacheProgress(){window.msgs.innerHTML="Cache Installed Successfully ✔";setTimeout(function(){window.msgs.innerHTML="Now Close And Re-Open Your Browser ...";},1500);}
+window.applicationCache.addEventListener("progress",DLProgress,false);
+window.applicationCache.oncached=function(e){DisplayCacheProgress();};
+window.applicationCache.onupdateready=function(e){DisplayCacheProgress();};
+window.applicationCache.onerror=function(e){window.msgs.innerHTML="Error Installing Cache! - Clear and Re-Open Your Browser ...";};
+</script>
+<div class="bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<div class="card">
+    <div class="logo">Riss<span>X</span></div>
+    <div class="subtitle">PS4 GoldHEN Host · 5.05 — 13.52</div>
+    <h1 id="msgs">Starting Cache Installation...</h1>
+    <div class="progress-wrap" id="pwrap">
+        <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+        <div class="progress-label" id="plabel"></div>
+    </div>
+</div>
+<div class="credits">Special Thanks to: <a href="https://twitter.com/_AlAzif">@_AlAzif</a> ChendoChap <a href="https://x.com/Kameleonre_">@Kameleonre_</a> SiSTR0 Abc</div>
+<script>
+(function () {
+    var msgs = document.getElementById('msgs');
+    var wrap = document.getElementById('pwrap');
+    var fill = document.getElementById('pfill');
+    var label = document.getElementById('plabel');
+    function update() {
+        var m = msgs.textContent.match(/(\d+)\s*%/);
+        if (m) {
+            wrap.classList.add('determinate');
+            fill.style.width = m[1] + '%';
+            label.textContent = m[1] + '%';
+        } else {
+            wrap.classList.remove('determinate');
+            fill.style.width = '0%';
+            label.textContent = '';
+        }
+    }
+    if ('MutationObserver' in window) {
+        new MutationObserver(update).observe(msgs, { childList: true, characterData: true, subtree: true });
+    }
+    update();
+})();
+</script>
+</body>
+</html>
