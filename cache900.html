@@ -76,13 +76,39 @@ body {
     .progress-label { font-size:14px; }
     .credits { font-size:12px; }
 }
+.status-meta { margin-top:10px; font-size:14px; color:rgba(255,255,255,.55); }
+.status-meta strong { color:#b8e7aa; font-weight:600; }
+.status-ok { color:#86e878 !important; }
+.status-warn { color:#f0d56a !important; }
+.status-error { color:#ff8078 !important; }
+.steps { display:flex; justify-content:center; gap:24px; margin-top:24px; font-size:12px; color:rgba(255,255,255,.42); }
+.steps span { position:relative; }
+.steps span:not(:last-child)::after { content:"›"; position:absolute; left:calc(100% + 10px); color:rgba(255,255,255,.25); }
+.steps .active { color:#b8e7aa; }
+.panel { margin:18px auto 0; width:100%; text-align:left; }
+.panel summary { cursor:pointer; list-style:none; color:rgba(255,255,255,.64); font-size:13px; text-align:center; }
+.panel summary::-webkit-details-marker { display:none; }
+.panel summary::before { content:"+ "; color:#86e878; }
+.panel[open] summary::before { content:"− "; }
+.panel-body { margin-top:12px; padding:12px 16px; border:1px solid rgba(255,255,255,.12); border-radius:10px; background:rgba(0,0,0,.26); font-size:12px; line-height:1.8; color:rgba(255,255,255,.66); }
+.panel-body b { color:#d7f3d0; font-weight:600; }
+.controls { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; margin-top:18px; }
+.control-btn { appearance:none; border:1px solid rgba(255,255,255,.18); border-radius:7px; padding:8px 12px; color:rgba(255,255,255,.78); background:rgba(0,0,0,.32); font:inherit; font-size:12px; cursor:pointer; }
+.control-btn:hover, .control-btn:focus { border-color:rgba(134,232,120,.65); color:#d7f3d0; outline:none; }
+.sound-state { color:#b8e7aa; }
+.help { margin-top:14px; font-size:12px; color:rgba(255,255,255,.5); line-height:1.5; }
+@media (max-width:800px) {
+    .steps { gap:12px; font-size:10px; }
+    .steps span:not(:last-child)::after { left:calc(100% + 5px); }
+    .control-btn { padding:7px 9px; }
+}
 </style>
 </head>
 <body>
 <script>
 history.replaceState(null,null,'index.html');var histlength=history.length;history.go(-histlength);
 function DLProgress(e){Percent=(Math.round(e.loaded / e.total * 100));window.msgs.innerHTML="Installing Offline Cache: " + Percent + "%";}
-function DisplayCacheProgress(){window.msgs.innerHTML="Cache Installed Successfully ✔";setTimeout(function(){window.msgs.innerHTML="Now Close And Re-Open Your Browser ...";},1500);}
+function DisplayCacheProgress(){window.msgs.innerHTML="Cache Installed Successfully ✔";if(window.testSound){window.testSound();}setTimeout(function(){window.msgs.innerHTML="Now Close And Re-Open Your Browser ...";},1500);}
 window.applicationCache.addEventListener("progress",DLProgress,false);
 window.applicationCache.oncached=function(e){DisplayCacheProgress();};
 window.applicationCache.onupdateready=function(e){DisplayCacheProgress();};
@@ -93,12 +119,146 @@ window.applicationCache.onerror=function(e){window.msgs.innerHTML="Error Install
     <div class="logo">Riss<span>X</span></div>
     <div class="subtitle">PS4 GoldHEN Host · 5.05 — 13.52</div>
     <h1 id="msgs">Starting Cache Installation...</h1>
+    <div class="status-meta">Firmware: <strong id="firmware">Detecting...</strong> · Profile: <strong id="profile">GoldHEN 9.00–9.60</strong></div>
+    <div class="steps" aria-label="Installation steps">
+        <span id="step-download" class="active">1. Downloading</span>
+        <span id="step-install">2. Installing</span>
+        <span id="step-ready">3. Ready</span>
+    </div>
+
     <div class="progress-wrap" id="pwrap">
         <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
         <div class="progress-label" id="plabel"></div>
     </div>
+    <div class="controls">
+        <button class="control-btn" id="retry-btn" type="button" onclick="retryCache()">Retry</button>
+        <button class="control-btn" id="sound-btn" type="button" onclick="toggleSound()">Sound: <span class="sound-state">On</span></button>
+        <button class="control-btn" type="button" onclick="testSound()">Test Sound</button>
+        <button class="control-btn" type="button" onclick="showCacheHelp()">Clear Cache Help</button>
+    </div>
+    <details class="panel">
+        <summary>Host diagnostics</summary>
+        <div class="panel-body">
+            <div><b>Firmware:</b> <span id="info-firmware">Detecting...</span></div>
+            <div><b>Cache profile:</b> <span id="info-profile">GoldHEN 9.00–9.60</span></div>
+            <div><b>Application Cache:</b> <span id="cache-state">Installing...</span></div>
+            <div><b>Connection:</b> <span id="connection-state">Checking...</span></div>
+            <div><b>Sound:</b> <span id="info-sound">On</span></div>
+        </div>
+    </details>
+    <div class="help" id="help-line">After success, close and reopen the PS4 Browser.</div>
+
 </div>
 <div class="credits">Special Thanks to: <a href="https://twitter.com/_AlAzif">@_AlAzif</a> ChendoChap <a href="https://x.com/Kameleonre_">@Kameleonre_</a> SiSTR0 Abc</div>
+<script>
+(function () {
+    var msgs = document.getElementById('msgs');
+    var wrap = document.getElementById('pwrap');
+    var fill = document.getElementById('pfill');
+    var label = document.getElementById('plabel');
+    var firmwareEl = document.getElementById('firmware');
+    var infoFirmwareEl = document.getElementById('info-firmware');
+    var cacheStateEl = document.getElementById('cache-state');
+    var connectionStateEl = document.getElementById('connection-state');
+    var infoSoundEl = document.getElementById('info-sound');
+    var soundStateEl = document.querySelector('.sound-state');
+    var soundEnabled = true;
+    var audioContext = null;
+    try { soundEnabled = localStorage.getItem('rissx-sound') !== 'off'; } catch (e) {}
+    function detectFirmware() {
+        var match = navigator.userAgent.match(/PlayStation 4[ /]([\d.]+)/i);
+        return match ? match[1] : 'Not detected';
+    }
+    function setStep(active) {
+        var ids = ['step-download', 'step-install', 'step-ready'];
+        var i;
+        for (i = 0; i < ids.length; i++) {
+            document.getElementById(ids[i]).className = i <= active ? 'active' : '';
+        }
+    }
+    function updateSoundLabels() {
+        var value = soundEnabled ? 'On' : 'Off';
+        soundStateEl.innerHTML = value;
+        infoSoundEl.innerHTML = value;
+    }
+    function getAudioContext() {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) { return null; }
+        if (!audioContext) { audioContext = new Ctx(); }
+        if (audioContext.resume) { audioContext.resume(); }
+        return audioContext;
+    }
+    function tone(frequency, delay) {
+        if (!soundEnabled) { return; }
+        try {
+            var ctx = getAudioContext();
+            if (!ctx) { return; }
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            var start = ctx.currentTime + (delay || 0);
+            osc.type = 'sine';
+            osc.frequency.value = frequency;
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(0.16, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.23);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(start); osc.stop(start + 0.25);
+        } catch (e) {}
+    }
+    window.testSound = function () { tone(660, 0); tone(880, 0.16); };
+    window.toggleSound = function () {
+        soundEnabled = !soundEnabled;
+        try { localStorage.setItem('rissx-sound', soundEnabled ? 'on' : 'off'); } catch (e) {}
+        updateSoundLabels();
+        if (soundEnabled) { window.testSound(); }
+    };
+    window.retryCache = function () {
+        msgs.innerHTML = 'Retrying Cache Installation...';
+        setStep(0);
+        window.location.reload(true);
+    };
+    window.showCacheHelp = function () {
+        window.alert('Clear the PS4 Browser Website Data, close the Browser, then open this host again.');
+    };
+    var firmware = detectFirmware();
+    firmwareEl.innerHTML = firmware;
+    infoFirmwareEl.innerHTML = firmware;
+    connectionStateEl.innerHTML = navigator.onLine === false ? 'Offline' : 'Online';
+    updateSoundLabels();
+    function update() {
+        var text = msgs.textContent;
+        var m = text.match(/(\d+)\s*%/);
+        if (m) {
+            wrap.classList.add('determinate');
+            fill.style.width = m[1] + '%';
+            label.textContent = m[1] + '%';
+            setStep(parseInt(m[1], 10) >= 100 ? 2 : 1);
+        } else {
+            wrap.classList.remove('determinate');
+            fill.style.width = '0%';
+            label.textContent = '';
+        }
+        if (/successfully|installed/i.test(text)) {
+            msgs.className = 'status-ok';
+            cacheStateEl.innerHTML = 'Installed successfully';
+            cacheStateEl.className = 'status-ok';
+            setStep(2);
+        } else if (/error|failed/i.test(text)) {
+            msgs.className = 'status-error';
+            cacheStateEl.innerHTML = 'Error';
+            cacheStateEl.className = 'status-error';
+        } else if (/retry|installing|starting/i.test(text)) {
+            msgs.className = 'status-warn';
+            cacheStateEl.innerHTML = 'Installing...';
+            cacheStateEl.className = 'status-warn';
+        }
+    }
+    if ('MutationObserver' in window) {
+        new MutationObserver(update).observe(msgs, { childList:true, characterData:true, subtree:true });
+    }
+    update();
+})();
+</script>
 <script>
 (function () {
     var msgs = document.getElementById('msgs');
