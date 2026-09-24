@@ -1,11 +1,10 @@
 CACHE MANIFEST 
-# ui-ps4-lite-2026-09-24
+# ui-ps4-lite-2026-09-24-cache-fix
 
 CACHE: 
-../img.jpg
 goldhen_2.4b18.12.bin
 index.html
-505\exploit.js
+505/exploit.js
 
 NETWORK: 
 * 
